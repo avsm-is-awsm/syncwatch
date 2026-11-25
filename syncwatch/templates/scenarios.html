@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Fault scenarios{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Fault scenarios</h1>
+    <p class="muted">Switch on a failure, run the sync, then open the run to see how it was handled and explained. Each switch makes one of the mock systems misbehave the way the real ones do.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Inject a failure</h2></div>
+  <ul class="toggles">
+    {% for s in scenarios %}
+    <li>
+      <label class="switch">
+        <input type="checkbox" data-scenario="{{ s.name }}" {{ 'checked' if s.enabled }}>
+        <span class="slider"></span>
+      </label>
+      <div>
+        <div class="mono"><strong>{{ s.name }}</strong></div>
+        <div class="muted">{{ s.description }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="actions left">
+    <button class="btn primary" data-post="/api/sync/run" data-then="run">Run sync with these settings</button>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Data actions</h2></div>
+  <div class="data-actions">
+    <div>
+      <h3>Fix the bad CRM records</h3>
+      <p class="muted">Fills in the missing amount, currency and billing email through CRM <code>PATCH</code> calls. The next run should then sync those deals and clear the open issues.</p>
+      <button class="btn" data-post="/api/demo/repair-data" data-then="reload">Repair data</button>
+    </div>
+    <div>
+      <h3>Edit a deal after it was invoiced</h3>
+      <p class="muted">Raises an already-invoiced deal’s value by 250.00 in the CRM, which happens a lot in real life. Reconciliation should flag it as an amount mismatch.</p>
+      <button class="btn" data-post="/api/demo/edit-invoiced-deal" data-then="/reconciliation">Edit a deal</button>
+    </div>
+    <div>
+      <h3>Reset the demo</h3>
+      <p class="muted">Deletes every run, invoice and fix, and reseeds the original data.</p>
+      <button class="btn danger" data-post="/api/demo/reset" data-confirm="Wipe all runs and invoices and reseed?" data-then="/">Reset everything</button>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Suggested walkthrough</h2></div>
+  <ol class="steps">
+    <li>Run a sync with everything off. It comes back <span class="pill partial">partial</span>: about 60 invoices are created and 4 records fail with data-quality errors.</li>
+    <li>Run it again. Already-invoiced deals are <em>skipped</em>, no duplicates are created, and the same 4 records fail again. The “runs failed” count on the Overview page goes up.</li>
+    <li>Turn on <code>crm_throttling</code> and <code>token_expiry</code>, then run. The run still finishes because it backs off and refreshes its token. Each retry is logged as a warning.</li>
+    <li>Turn on <code>finance_outage</code>. After 3 failures in a row the circuit breaker stops the run, which is marked <span class="pill failed">failed</span> and sends an alert.</li>
+    <li>Turn on <code>schema_drift</code>. The run stops on the first record with one clear <code>SCHEMA_CHANGE</code> error instead of 60 confusing ones.</li>
+    <li>Switch everything off, press <em>Repair data</em>, then run. You get <span class="pill succeeded">succeeded</span>, and Reconciliation shows <strong>Balanced</strong>.</li>
+    <li>Press <em>Edit a deal</em>. Reconciliation now catches a 250.00 mismatch.</li>
+  </ol>
+</section>
+{% endblock %}

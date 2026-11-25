@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Connect{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Connect an AI agent or another system</h1>
+    <p class="muted">SyncWatch exposes the same information in three ways: as a REST API, as an MCP server for AI agents, and as an alert webhook.</p>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <div class="card-head"><h2>MCP server</h2><span class="pill succeeded">Streamable HTTP</span></div>
+    <p>Endpoint:</p>
+    <pre class="copy">{{ base }}/mcp/</pre>
+    <h3>Copilot Studio</h3>
+    <ol class="steps small">
+      <li>Open your agent and go to <em>Tools → Add a tool → New tool → Model Context Protocol</em>.</li>
+      <li>Server name <code>SyncWatch</code>, server URL as shown above, authentication <em>None</em>. This is a public demo.</li>
+      <li>Ask the agent: “Is the invoice sync healthy?” or “Which deals failed and who should fix them?”</li>
+    </ol>
+    <h3>Claude Code</h3>
+    <pre class="copy">claude mcp add --transport http syncwatch {{ base }}/mcp/</pre>
+    <h3>Tools</h3>
+    <ul class="tools">
+      {% for t in tools %}<li><code>{{ t.name }}</code><span class="muted">{{ t.description }}</span></li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>REST API</h2></div>
+    <p>Full OpenAPI spec at <a href="/openapi.json">/openapi.json</a>, with an interactive version at <a href="/docs">/docs</a>.</p>
+    <pre class="copy">curl -X POST {{ base }}/api/sync/run</pre>
+    <pre class="copy">curl {{ base }}/api/health/summary</pre>
+    <h3>Power Automate</h3>
+    <p class="small">You can call these endpoints from a cloud flow with the HTTP action. One example is a scheduled flow that runs <code>POST /api/sync/run</code> and posts to Teams when <code>status</code> isn’t <code>succeeded</code>. To use them as a custom connector, convert <code>/openapi.json</code> to OpenAPI 2.0 first, because custom connectors only import Swagger 2.0.</p>
+    <h3>Mock source systems</h3>
+    <ul class="small">
+      <li>CRM (Dataverse-style OData): <a href="/mock/crm/docs">/mock/crm/docs</a></li>
+      <li>Finance: <a href="/mock/finance/docs">/mock/finance/docs</a></li>
+    </ul>
+    <h3>Alerts</h3>
+    <p class="small">Set <code>ALERT_WEBHOOK_URL</code> to a Teams Workflows or Slack incoming webhook. Any run that isn’t a full success then posts a summary there: which categories failed, who owns the fix, and a link to the run.</p>
+  </div>
+</section>
+{% endblock %}

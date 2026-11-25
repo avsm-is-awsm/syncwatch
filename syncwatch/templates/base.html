@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SyncWatch{% endblock %} · SyncWatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232f5bea'/><path d='M9 17l4 4 10-10' stroke='white' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><span class="logo">✓</span> SyncWatch</a>
+  <nav>
+    <a href="/" class="{{ 'on' if nav == 'overview' }}">Overview</a>
+    <a href="/reconciliation" class="{{ 'on' if nav == 'reconciliation' }}">Reconciliation</a>
+    <a href="/scenarios" class="{{ 'on' if nav == 'scenarios' }}">Fault scenarios</a>
+    <a href="/errors" class="{{ 'on' if nav == 'errors' }}">Error catalogue</a>
+    <a href="/connect" class="{{ 'on' if nav == 'connect' }}">Connect / MCP</a>
+    <a href="/docs">API docs ↗</a>
+  </nav>
+</header>
+{% if active_scenarios %}
+<div class="banner">
+  ⚡ Fault injection on: <strong>{{ active_scenarios | join(', ') }}</strong>.
+  <a href="/scenarios">Manage</a>
+</div>
+{% endif %}
+<main>
+  {% block content %}{% endblock %}
+</main>
+<footer>
+  Won deals in a Dynamics-style CRM become invoices in a Finance API.
+  Both systems are mocks served by this app at <code>/mock/crm</code> and <code>/mock/finance</code>.
+</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

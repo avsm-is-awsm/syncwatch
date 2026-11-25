@@ -1,0 +1,15 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# New > Blueprint > pick this repo. Free plan; the SQLite file is reseeded
+# on each deploy/restart, which suits a demo.
+services:
+  - type: web
+    name: syncwatch
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SYNC_INTERVAL_MINUTES
+        value: "0"
+      - key: ALERT_WEBHOOK_URL
+        sync: false   # optional: paste a Teams/Slack incoming webhook in the dashboard

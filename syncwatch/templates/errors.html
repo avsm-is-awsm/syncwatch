@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Error catalogue{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Error catalogue</h1>
+    <p class="muted">Every failure gets one of these codes, so whoever opens a run can see straight away what kind of problem it is, whether a retry will help and who needs to act. New failure types go in <code>syncwatch/errors.py</code>.</p>
+  </div>
+</section>
+<section class="catalog">
+  {% for c in catalog %}
+  <article class="explain sev-{{ c.severity }}">
+    <header>
+      <span class="cat cat-{{ c.severity }}">{{ c.code }}</span>
+      <h3>{{ c.title }}</h3>
+    </header>
+    <dl>
+      <dt>Meaning</dt><dd>{{ c.meaning }}</dd>
+      <dt>Likely cause</dt><dd>{{ c.likely_cause }}</dd>
+      <dt>Fix</dt><dd>{{ c.how_to_fix }}</dd>
+      <dt>Owner</dt><dd>{{ c.owner }}</dd>
+      <dt>Retry helps?</dt><dd>{{ 'Yes' if c.retryable else 'No' }}</dd>
+    </dl>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

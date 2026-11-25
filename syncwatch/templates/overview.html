@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>CRM → Finance invoice sync</h1>
+    <p class="muted">Each run reads won opportunities from the CRM and raises an invoice in Finance for any that are new. Bad records get logged and skipped, so they never stop the run.</p>
+  </div>
+  <div class="actions">
+    <button class="btn primary" data-post="/api/sync/run" data-then="run">Run sync now</button>
+    <a class="btn" href="/reconciliation">Check the numbers</a>
+  </div>
+</section>
+
+{% set last = stats.last_run %}
+<section class="tiles">
+  <div class="tile">
+    <div class="label">Last run</div>
+    {% if last %}
+      <div class="value"><span class="pill {{ last.status }}">{{ last.status }}</span></div>
+      <div class="sub"><a href="/runs/{{ last.id }}">#{{ last.id }}</a> · {{ last.started_at[11:19] }} UTC · {{ last.trigger }}</div>
+    {% else %}
+      <div class="value muted">No runs yet</div><div class="sub">Press “Run sync now”</div>
+    {% endif %}
+  </div>
+  <div class="tile">
+    <div class="label">Success rate (last 20)</div>
+    <div class="value">{{ stats.success_rate if stats.success_rate is not none else '–' }}{% if stats.success_rate is not none %}<small>%</small>{% endif %}</div>
+    <div class="sub">{{ stats.succeeded }} ok · {{ stats.partial }} partial · {{ stats.failed }} failed</div>
+  </div>
+  <div class="tile">
+    <div class="label">Invoices created</div>
+    <div class="value">{{ stats.invoices_total }}</div>
+    <div class="sub">across all runs</div>
+  </div>
+  <div class="tile {{ 'alert' if issues }}">
+    <div class="label">Open issues</div>
+    <div class="value">{{ issues | length }}</div>
+    <div class="sub">records still not synced</div>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Open issues</h2>
+      <span class="muted small">Latest failure per record, worst first</span>
+    </div>
+    {% if issues %}
+    <ul class="issues">
+      {% for i in issues %}
+      <li>
+        <div class="issue-top">
+          <span class="cat cat-{{ i.explanation.severity }}">{{ i.category }}</span>
+          <strong>{{ i.record_label or i.record_id[:8] }}</strong>
+        </div>
+        <div class="issue-msg">{{ i.message }}</div>
+        <div class="issue-meta">
+          Failed in {{ i.runs_failed }} run{{ 's' if i.runs_failed != 1 }} (since #{{ i.first_seen_run }})
+          · Owner: <strong>{{ i.explanation.owner }}</strong>
+          {% if not i.explanation.retryable %}· <span class="warn-text">retrying won’t fix this</span>{% endif %}
+        </div>
+        <details><summary>How to fix</summary><p>{{ i.explanation.how_to_fix }}</p></details>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="empty">Nothing open. Every won deal that was attempted has an invoice.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Errors &amp; warnings (7 days)</h2></div>
+    {% if breakdown %}
+    {% set peak = breakdown | map(attribute='errors') | max %}
+    {% set peakw = breakdown | map(attribute='warnings') | max %}
+    {% set top = [peak, peakw, 1] | max %}
+    <table class="bars">
+      <thead><tr><th>Category</th><th>Errors</th><th>Warnings</th><th>Runs</th></tr></thead>
+      <tbody>
+      {% for b in breakdown %}
+        <tr>
+          <td><span title="{{ b.explanation.meaning }}">{{ b.explanation.title }}</span><div class="mono small muted">{{ b.category }}</div></td>
+          <td><div class="bar err" style="--w: {{ (100 * b.errors / top) | round }}%"></div><span>{{ b.errors }}</span></td>
+          <td><div class="bar wrn" style="--w: {{ (100 * b.warnings / top) | round }}%"></div><span>{{ b.warnings }}</span></td>
+          <td>{{ b.runs_affected }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted small">Warnings are problems the sync recovered from by itself, such as throttling or an expired token.</p>
+    {% else %}
+      <p class="empty">No errors recorded yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Recent runs</h2></div>
+  {% if runs %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Started (UTC)</th><th>Trigger</th><th>Status</th><th class="num">Seen</th><th class="num">Synced</th><th class="num">Skipped</th><th class="num">Failed</th><th>Errors</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+      <tr class="clickable" data-href="/runs/{{ r.id }}">
+        <td><a href="/runs/{{ r.id }}">{{ r.id }}</a></td>
+        <td class="mono">{{ r.started_at[:19] | replace('T', ' ') }}</td>
+        <td>{{ r.trigger }}{% if r.active_scenarios %} <span class="chip" title="{{ r.active_scenarios | join(', ') }}">⚡{{ r.active_scenarios | length }}</span>{% endif %}</td>
+        <td><span class="pill {{ r.status }}">{{ r.status }}</span></td>
+        <td class="num">{{ r.records_seen }}</td>
+        <td class="num">{{ r.records_synced }}</td>
+        <td class="num">{{ r.records_skipped }}</td>
+        <td class="num">{{ r.records_failed }}</td>
+        <td>{% for code, n in r.error_summary.items() %}<span class="cat cat-{{ describe(code).severity }}">{{ code }} ×{{ n }}</span> {% endfor %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="empty">No runs yet. Try a clean run first. Then switch on a <a href="/scenarios">fault scenario</a> and see how the sync copes.</p>
+  {% endif %}
+</section>
+{% endblock %}

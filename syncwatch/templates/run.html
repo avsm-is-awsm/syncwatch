@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Run #{{ run.id }}{% endblock %}
+{% block content %}
+<a class="back" href="/">← All runs</a>
+<section class="hero">
+  <div>
+    <h1>Run #{{ run.id }} <span class="pill {{ run.status }}">{{ run.status }}</span></h1>
+    <p class="muted">
+      {{ run.started_at[:19] | replace('T', ' ') }} → {{ (run.finished_at or 'running')[:19] | replace('T', ' ') }} UTC ·
+      trigger: {{ run.trigger }} ·
+      scenarios: {{ run.active_scenarios | join(', ') or 'none' }}
+    </p>
+  </div>
+  <div class="actions">
+    <button class="btn primary" data-post="/api/sync/run" data-then="run">Run again</button>
+    <a class="btn" href="/api/runs/{{ run.id }}">Raw JSON</a>
+  </div>
+</section>
+
+<section class="tiles">
+  <div class="tile"><div class="label">Seen</div><div class="value">{{ run.records_seen }}</div><div class="sub">won deals read from the CRM</div></div>
+  <div class="tile"><div class="label">Synced</div><div class="value">{{ run.records_synced }}</div><div class="sub">new invoices</div></div>
+  <div class="tile"><div class="label">Skipped</div><div class="value">{{ run.records_skipped }}</div><div class="sub">already invoiced</div></div>
+  <div class="tile {{ 'alert' if run.records_failed }}"><div class="label">Failed</div><div class="value">{{ run.records_failed }}</div><div class="sub">records with errors</div></div>
+</section>
+
+{% if run.error_groups %}
+<section class="card">
+  <div class="card-head"><h2>What went wrong</h2><span class="muted small">Errors grouped by category</span></div>
+  {% for g in run.error_groups %}
+  {% set c = g.category %}
+  <article class="explain sev-{{ c.severity }}">
+    <header>
+      <span class="cat cat-{{ c.severity }}">{{ c.code }}</span>
+      <h3>{{ c.title }}</h3>
+      <span class="count">{{ g.events | length }} occurrence{{ 's' if g.events | length != 1 }}</span>
+    </header>
+    <dl>
+      <dt>What happened</dt><dd>{{ c.meaning }}</dd>
+      <dt>Likely cause</dt><dd>{{ c.likely_cause }}</dd>
+      <dt>How to fix</dt><dd><strong>{{ c.how_to_fix }}</strong></dd>
+      <dt>Who acts</dt><dd>{{ c.owner }} · {{ 'a re-run may help' if c.retryable else 'a re-run will not help' }}</dd>
+    </dl>
+    <details>
+      <summary>Affected records ({{ g.events | length }})</summary>
+      <ul class="affected">
+        {% for e in g.events %}
+        <li>
+          <div><strong>{{ e.record_label or (e.record_id[:8] if e.record_id else 'whole run') }}</strong>: {{ e.message }}</div>
+          {% if e.detail %}<details><summary class="small">detail</summary><pre>{{ e.detail | pretty }}</pre></details>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>Timeline</h2>
+    <label class="small muted"><input type="checkbox" id="hide-info"> errors &amp; warnings only</label>
+  </div>
+  <ol class="timeline" id="timeline">
+    {% for e in run.events %}
+    <li class="ev {{ e.level }}">
+      <span class="ts mono">{{ e.ts[11:19] }}</span>
+      <span class="step">{{ e.step }}</span>
+      <span class="msg">
+        {% if e.category %}<span class="cat cat-{{ describe(e.category).severity }}">{{ e.category }}</span>{% endif %}
+        {% if e.record_label %}<strong>{{ e.record_label }}</strong>: {% endif %}{{ e.message }}
+        {% if e.detail %}<details><summary class="small">detail</summary><pre>{{ e.detail | pretty }}</pre></details>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Reconciliation{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Do the numbers match?</h1>
+    <p class="muted">This pulls every won deal from the CRM and every invoice from Finance through their APIs, lands both in staging tables, and compares them in SQL
+      (<code>sql/reconciliation.sql</code>).</p>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="/reconciliation">Re-run checks</a>
+  </div>
+</section>
+
+{% if error %}
+<section class="card explain sev-high">
+  <header><span class="cat cat-high">{{ error.category.code }}</span><h3>Couldn’t reconcile: {{ error.category.title }}</h3></header>
+  <p>{{ error.message }}</p>
+  <p><strong>{{ error.category.how_to_fix }}</strong></p>
+  <p class="muted small">Fault scenarios that break the APIs also break reconciliation, which is expected. <a href="/scenarios">Turn them off</a> and try again.</p>
+</section>
+{% else %}
+<section class="verdict {{ result.overall }}">
+  {% if result.overall == 'pass' %}
+    <strong>✓ Balanced.</strong> Every won deal has a matching invoice, and the totals agree to the penny.
+  {% elif result.overall == 'explained' %}
+    <strong>✓ Totals reconcile.</strong> {{ (result.checks | selectattr('name', 'equalto', 'won_not_invoiced') | first).count }} won deal(s) aren’t invoiced yet, and each one has a logged reason, so the gap is fully explained.
+  {% elif result.overall == 'warn' %}
+    <strong>! Gaps without a logged reason.</strong> Some won deals have no invoice and no recorded error, so they’ve probably never been attempted. Run a sync.
+  {% else %}
+    <strong>✗ Numbers don’t match.</strong> At least one check failed or part of the gap is unexplained. Look at the failing checks below.
+  {% endif %}
+  <span class="muted small">Landed {{ result.landed.crm_won }} CRM deals and {{ result.landed.finance_invoices }} invoices at {{ result.ran_at[11:19] }} UTC.</span>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Totals by currency</h2></div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Currency</th><th class="num">CRM won</th><th class="num">Invoiced</th><th class="num">Gap</th><th class="num">Explained by unsynced deals</th><th class="num">Unexplained</th></tr></thead>
+    <tbody>
+    {% for t in result.totals %}
+      <tr>
+        <td><strong>{{ t.currency }}</strong></td>
+        <td class="num">{{ t.crm_won_total_minor | money(t.currency) }}<div class="small muted">{{ t.crm_won_count }} deals</div></td>
+        <td class="num">{{ t.invoiced_total_minor | money(t.currency) }}<div class="small muted">{{ t.invoice_count }} invoices</div></td>
+        <td class="num">{{ t.gap_minor | money(t.currency) }}</td>
+        <td class="num">{{ t.explained_by_unsynced_minor | money(t.currency) }}</td>
+        <td class="num {{ 'bad' if t.unexplained_minor else 'good' }}"><strong>{{ t.unexplained_minor | money(t.currency) }}</strong></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small">Deals with no amount can’t be counted in either total. They appear under “Every won deal is invoiced” below.</p>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Checks</h2></div>
+  {% for c in result.checks %}
+  <details class="check {{ c.status }}" {{ 'open' if c.status in ('fail', 'warn') }}>
+    <summary>
+      <span class="check-icon">{{ {'pass': '✓', 'explained': '≈', 'warn': '!', 'fail': '✗'}[c.status] }}</span>
+      <span class="check-title">{{ c.title }}</span>
+      <span class="pill {{ c.status }}">{{ c.status }}</span>
+      <span class="muted small">{{ c.count }} row{{ 's' if c.count != 1 }} · <code>{{ c.name }}</code></span>
+    </summary>
+    {% if c.rows %}
+    <div class="table-wrap">
+    <table class="compact">
+      <thead><tr>{% for k in c.rows[0].keys() %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for r in c.rows %}
+        <tr>{% for k, v in r.items() %}<td class="{{ 'mono' if k.endswith('_id') or k == 'source_reference' }}">{% if k.endswith('_minor') %}{{ v | money(r.currency or r.crm_currency) }}{% else %}{{ v if v is not none else '–' }}{% endif %}</td>{% endfor %}</tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+      <p class="empty small">No rows. The check passed.</p>
+    {% endif %}
+  </details>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}
