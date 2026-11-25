@@ -4,7 +4,7 @@
 system as invoices. It handles failures properly, explains errors in plain
 English, and proves with SQL that the numbers match.**
 
-> Live demo: **https://syncwatch.onrender.com** · API docs: `/docs` · MCP endpoint: `/mcp/`
+> Live demo: **https://syncwatch-f3jp.onrender.com** · API docs: `/docs` · MCP endpoint: `/mcp/`
 > (Free hosting, so the first request after an idle period takes ~30s to wake up.)
 
 ![CI](https://github.com/avsm-is-awsm/syncwatch/actions/workflows/ci.yml/badge.svg)
@@ -124,20 +124,22 @@ Or with Docker: `docker build -t syncwatch . && docker run -p 8000:8000 syncwatc
 ## Connect an AI agent
 
 **Copilot Studio:** open your agent and go to *Tools → Add a tool → New tool → Model Context Protocol*. Use the URL
-`https://syncwatch.onrender.com/mcp/` with no authentication.
+`https://syncwatch-f3jp.onrender.com/mcp/` with no authentication.
 
 **Claude Code:**
 
 ```powershell
-claude mcp add --transport http syncwatch https://syncwatch.onrender.com/mcp/
+claude mcp add --transport http syncwatch https://syncwatch-f3jp.onrender.com/mcp/
 ```
 
 Then ask: *"Which deals didn't make it to Finance, and who needs to fix them?"*
 
 ## Deploy
 
-The repo includes a [Render Blueprint](render.yaml). In Render, choose **New → Blueprint** and select this repo. It builds the Dockerfile
-and deploys on every push to `main`. The same image runs on Azure Container Apps or App Service for Containers.
+The repo includes a [Render Blueprint](render.yaml). In Render, choose **New → Blueprint** and point it at this repo. Render builds the Dockerfile on the free plan.
+The live demo was added as a public repository URL, so after pushing, redeploy with **Manual Deploy → Deploy latest commit**.
+If you connect GitHub to Render instead, it deploys automatically on every push to `main`.
+The same image also runs on Azure Container Apps or App Service for Containers.
 
 ## Design decisions
 
